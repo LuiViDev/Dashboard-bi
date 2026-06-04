@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Painel Comercial — BI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+/* ============================================================
+   VARIÁVEIS — edite aqui para mudar cores do tema
+   ============================================================ */
+:root {
+  --blue:       #1a6ef5;
+  --blue-light: #e8f0fe;
+  --green:      #12b76a;
+  --green-light:#d1fae5;
+  --red:        #f04438;
+  --red-light:  #fee4e2;
+  --amber:      #f79009;
+  --amber-light:#fef3c7;
+  --purple:     #7b61ff;
+
+  --bg:         #f5f6fa;
+  --surface:    #ffffff;
+  --surface2:   #f9fafb;
+  --border:     rgba(0,0,0,0.08);
+  --border2:    rgba(0,0,0,0.14);
+  --text1:      #111827;
+  --text2:      #6b7280;
+  --text3:      #9ca3af;
+
+  --radius-md:  8px;
+  --radius-lg:  12px;
+  --sidebar-w:  56px;
+  --topbar-h:   52px;
+}
+
+/* ============================================================
+   DARK MODE — automático pelo SO
+   ============================================================ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --blue-light: #1e3a6e;
+    --green-light:#0b3d27;
+    --red-light:  #4a1515;
+    --amber-light:#3d2800;
+    --bg:         #0f1117;
+    --surface:    #1a1d27;
+    --surface2:   #14161f;
+    --border:     rgba(255,255,255,0.07);
+    --border2:    rgba(255,255,255,0.13);
+    --text1:      #f3f4f6;
+    --text2:      #9ca3af;
+    --text3:      #6b7280;
+  }
+}
+
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text1);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ============================================================
+   LAYOUT PRINCIPAL
+   ============================================================ */
+.layout {
+  display: grid;
+  grid-template-rows: var(--topbar-h) 1fr;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* --- TOPBAR --- */
+.topbar {
+  grid-column: 1 / -1;
+  background: var(--surface);
+  border-bottom: 0.5px solid var(--border2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  z-index: 10;
+}
+.topbar-left  { display: flex; align-items: center; gap: 10px; }
+.logo-dot     { width: 9px; height: 9px; border-radius: 50%; background: var(--blue); }
+.logo-text    { font-size: 14px; font-weight: 600; color: var(--text1); }
+.breadcrumb   { font-size: 12px; color: var(--text3); margin-left: 4px; }
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+
+.period-pills { display: flex; gap: 4px; }
+.pill {
+  font-size: 11px; color: var(--text2);
+  background: var(--surface2);
+  border: 0.5px solid var(--border);
+  padding: 4px 10px; border-radius: 20px;
+  cursor: pointer; transition: all .15s;
+  font-family: 'DM Mono', monospace;
+}
+.pill:hover  { border-color: var(--border2); }
+.pill.active { background: var(--blue-light); color: var(--blue); border-color: rgba(26,110,245,0.3); }
+
+.topbar-icon {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-md); font-size: 17px;
+  color: var(--text2); cursor: pointer; transition: background .15s;
+}
+.topbar-icon:hover { background: var(--surface2); }
+
+/* --- SIDEBAR --- */
+.sidebar {
+  background: var(--surface);
+  border-right: 0.5px solid var(--border2);
+  display: flex; flex-direction: column;
+  align-items: center; padding: 14px 0; gap: 6px;
+  overflow: hidden;
+}
+.nav-item {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-md); font-size: 18px;
+  color: var(--text2); cursor: pointer;
+  transition: all .15s; position: relative;
+}
+.nav-item:hover  { background: var(--surface2); color: var(--text1); }
+.nav-item.active { background: var(--blue-light); color: var(--blue); }
+.nav-spacer { flex: 1; }
+
+/* --- MAIN CONTENT --- */
+.main {
+  overflow-y: auto;
+  padding: 20px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+
+/* ============================================================
+   PÁGINAS (abas)
+   ============================================================ */
+.page { display: none; flex-direction: column; gap: 16px; }
+.page.active { display: flex; }
+
+/* ============================================================
+   TIPOGRAFIA UTILITÁRIA
+   ============================================================ */
+.section-label {
+  font-size: 10px; font-weight: 600;
+  color: var(--text3);
+  text-transform: uppercase; letter-spacing: .07em;
+}
+.card-title {
+  font-size: 13px; font-weight: 600;
+  color: var(--text1);
+}
+
+/* ============================================================
+   CARDS KPI
+   ============================================================ */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.kpi-card {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 8px;
+  position: relative; overflow: hidden;
+  transition: box-shadow .2s;
+}
+.kpi-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.07); }
+.kpi-card::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; right: 0; height: 2.5px;
+}
+.kpi-card.blue::before   { background: var(--blue); }
+.kpi-card.green::before  { background: var(--green); }
+.kpi-card.amber::before  { background: var(--amber); }
+.kpi-card.red::before    { background: var(--red); }
+.kpi-card.purple::before { background: var(--purple); }
+
+.kpi-label {
+  font-size: 10px; font-weight: 600;
+  color: var(--text2); text-transform: uppercase; letter-spacing: .05em;
+}
+.kpi-main-val {
+  font-size: 24px; font-weight: 600;
+  color: var(--text1); line-height: 1; font-family: 'DM Mono', monospace;
+}
+.kpi-compare {
+  display: flex; align-items: center;
+  flex-wrap: wrap; gap: 6px;
+}
+.kpi-block { display: flex; flex-direction: column; gap: 1px; }
+.kpi-prd-lbl {
+  font-size: 9px; font-weight: 600;
+  color: var(--text3); text-transform: uppercase; letter-spacing: .05em;
+}
+.kpi-prd-val {
+  font-size: 12px; font-weight: 500;
+  color: var(--text2); font-family: 'DM Mono', monospace;
+}
+.kpi-sep { width: 0.5px; height: 26px; background: var(--border2); }
+.badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 11px; font-weight: 600;
+  padding: 3px 8px; border-radius: 20px;
+}
+.badge.up   { background: var(--green-light); color: #027a48; }
+.badge.down { background: var(--red-light);   color: #b42318; }
+.badge.flat { background: var(--surface2);     color: var(--text2); border: 0.5px solid var(--border); }
+
+/* ============================================================
+   CARDS GENÉRICOS
+   ============================================================ */
+.card {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+.card-header {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.legend-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.legend-item {
+  display: flex; align-items: center;
+  gap: 5px; font-size: 11px; color: var(--text2);
+}
+.legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+/* ============================================================
+   TABELA DE VENDEDORES
+   ============================================================ */
+.table-wrap { overflow-x: auto; }
+table {
+  width: 100%; border-collapse: collapse;
+  font-size: 13px;
+}
+thead tr {
+  border-bottom: 0.5px solid var(--border2);
+}
+thead th {
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 10px; font-weight: 600;
+  color: var(--text3);
+  text-transform: uppercase; letter-spacing: .05em;
+  white-space: nowrap;
+}
+tbody tr {
+  border-bottom: 0.5px solid var(--border);
+  transition: background .1s;
+}
+tbody tr:hover { background: var(--surface2); }
+tbody td {
+  padding: 10px 12px;
+  color: var(--text1);
+  vertical-align: middle;
+}
+.td-mono { font-family: 'DM Mono', monospace; font-size: 12px; }
+.td-muted { color: var(--text2); }
+
+/* avatar círculo */
+.avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600;
+  flex-shrink: 0;
+}
+.td-seller { display: flex; align-items: center; gap: 10px; }
+
+/* mini progress */
+.mini-bar { height: 4px; background: var(--surface2); border-radius: 2px; min-width: 60px; }
+.mini-fill { height: 100%; border-radius: 2px; }
+
+/* ranking dot */
+.rank-badge {
+  width: 20px; height: 20px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600;
+  background: var(--surface2); color: var(--text2);
+}
+.rank-badge.gold   { background: #fef3c7; color: #b45309; }
+.rank-badge.silver { background: #f3f4f6; color: #374151; }
+.rank-badge.bronze { background: #fde8d8; color: #9a3412; }
+
+/* status pill */
+.status-pill {
+  font-size: 10px; font-weight: 600;
+  padding: 3px 9px; border-radius: 20px;
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.status-pill.ok      { background: var(--green-light); color: #027a48; }
+.status-pill.alert   { background: var(--amber-light); color: #b45309; }
+.status-pill.danger  { background: var(--red-light);   color: #b42318; }
+
+/* ============================================================
+   BARRAS DE PROGRESSO COLORIDAS
+   ============================================================ */
+.prog-row { display: flex; flex-direction: column; gap: 10px; }
+.prog-item { display: flex; flex-direction: column; gap: 4px; }
+.prog-info { display: flex; justify-content: space-between; align-items: center; }
+.prog-name { font-size: 12px; color: var(--text2); }
+.prog-val  { font-size: 12px; font-weight: 600; color: var(--text1); font-family: 'DM Mono', monospace; }
+.prog-track { height: 6px; background: var(--surface2); border-radius: 3px; }
+.prog-fill  { height: 100%; border-radius: 3px; transition: width .6s ease; }
+
+/* ============================================================
+   CARTÕES DE INADIMPLÊNCIA
+   ============================================================ */
+.inad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.inad-kpi {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.inad-kpi.danger-card {
+  border-color: rgba(240,68,56,.3);
+  background: linear-gradient(135deg, var(--surface) 70%, rgba(240,68,56,.04));
+}
+
+/* faixa de aging */
+.aging-block { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.aging-row   { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.aging-lbl   { width: 80px; color: var(--text2); flex-shrink: 0; }
+.aging-track { flex: 1; height: 8px; background: var(--surface2); border-radius: 4px; }
+.aging-fill  { height: 100%; border-radius: 4px; }
+.aging-val   { width: 60px; text-align: right; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text1); font-weight: 500; }
+
+/* ============================================================
+   GRID LAYOUTS
+   ============================================================ */
+.row-2-3 { display: grid; grid-template-columns: 2fr 1.2fr; gap: 14px; }
+.row-3   { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; }
+.row-2   { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
+
+/* ============================================================
+   CHIPS DE FILTRO
+   ============================================================ */
+.filter-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+.filter-chip {
+  font-size: 11px; padding: 4px 12px;
+  border-radius: 20px; cursor: pointer;
+  border: 0.5px solid var(--border);
+  background: var(--surface2); color: var(--text2);
+  transition: all .15s;
+}
+.filter-chip:hover  { border-color: var(--border2); }
+.filter-chip.active { background: var(--blue-light); color: var(--blue); border-color: rgba(26,110,245,.3); }
+
+/* ============================================================
+   ANIMAÇÃO DE ENTRADA
+   ============================================================ */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page.active > * {
+  animation: fadeUp .25s ease both;
+}
+.page.active > *:nth-child(2) { animation-delay: .04s; }
+.page.active > *:nth-child(3) { animation-delay: .08s; }
+.page.active > *:nth-child(4) { animation-delay: .12s; }
+.page.active > *:nth-child(5) { animation-delay: .16s; }
+
+/* ============================================================
+   SCROLLBAR FINA
+   ============================================================ */
+.main::-webkit-scrollbar { width: 4px; }
+.main::-webkit-scrollbar-track { background: transparent; }
+.main::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+/* ============================================================
+   RESPONSIVIDADE BÁSICA
+   ============================================================ */
+@media (max-width: 900px) {
+  .kpi-grid    { grid-template-columns: repeat(2, 1fr); }
+  .inad-grid   { grid-template-columns: repeat(2, 1fr); }
+  .row-2-3, .row-3, .row-2 { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .kpi-grid  { grid-template-columns: 1fr; }
+  .inad-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ===================== TOPBAR ===================== -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="logo-dot"></div>
+      <!-- EDITAR: nome da empresa / módulo -->
+      <span class="logo-text">Painel Comercial</span>
+      <span class="breadcrumb" id="breadcrumb">/ Visão Geral</span>
+    </div>
+    <div class="topbar-right">
+      <div class="period-pills">
+        <span class="pill" onclick="setPeriod(this,'Jan')">Jan</span>
+        <span class="pill" onclick="setPeriod(this,'Fev')">Fev</span>
+        <span class="pill active" onclick="setPeriod(this,'Mar')">Mar</span>
+        <span class="pill" onclick="setPeriod(this,'Abr')">Abr</span>
+        <span class="pill" onclick="setPeriod(this,'Mai')">Mai</span>
+        <span class="pill" onclick="setPeriod(this,'Jun')">Jun</span>
+      </div>
+      <div class="topbar-icon" title="Atualizar"><i class="ti ti-refresh"></i></div>
+      <div class="topbar-icon" title="Configurações"><i class="ti ti-settings"></i></div>
+    </div>
+  </header>
+
+  <!-- ===================== SIDEBAR ===================== -->
+  <nav class="sidebar">
+    <div class="nav-item active" title="Visão Geral"     onclick="goPage('overview',  this)"><i class="ti ti-chart-bar"></i></div>
+    <div class="nav-item"        title="Clientes/Vendedor" onclick="goPage('vendedores',this)"><i class="ti ti-users"></i></div>
+    <div class="nav-item"        title="Inadimplência"   onclick="goPage('inadimplencia',this)"><i class="ti ti-alert-circle"></i></div>
+    <div class="nav-item"        title="Estoque"         onclick="goPage('estoque',   this)"><i class="ti ti-box"></i></div>
+    <div class="nav-item"        title="Expedição"       onclick="goPage('expedicao', this)"><i class="ti ti-truck"></i></div>
+    <div class="nav-spacer"></div>
+    <div class="nav-item"        title="Minha conta"><i class="ti ti-user"></i></div>
+  </nav>
+
+  <!-- ===================== MAIN ===================== -->
+  <main class="main">
+
+    <!-- ================================================
+         PÁGINA 1 — VISÃO GERAL
+         ================================================ -->
+    <div id="page-overview" class="page active">
+
+      <p class="section-label">Indicadores do mês — <span id="lbl-period">Março 2025</span></p>
+
+      <!-- KPIs -->
+      <div class="kpi-grid">
+        <!-- EDITAR: substitua os valores abaixo pelos seus dados reais -->
+        <div class="kpi-card blue">
+          <div class="kpi-label">Faturamento</div>
+          <div class="kpi-main-val">R$ 1,24M</div>
+          <div class="kpi-compare">
+            <div class="kpi-block">
+              <span class="kpi-prd-lbl">A.A</span>
+              <span class="kpi-prd-val">R$ 1,10M</span>
+            </div>
+            <div class="kpi-sep"></div>
+            <div class="kpi-block">
+              <span class="kpi-prd-lbl">M.A</span>
+              <span class="kpi-prd-val">R$ 1,18M</span>
+            </div>
+            <span class="badge up"><i class="ti ti-trending-up"></i>+12,7%</span>
+          </div>
+        </div>
+
+        <div class="kpi-card green">
+          <div class="kpi-label">Pedidos</div>
+          <div class="kpi-main-val">3.840</div>
+          <div class="kpi-compare">
+            <div class="kpi-block">
+              <span class="kpi-prd-lbl">A.A</span>
+              <span class="kpi-prd-val">3.210</span>
+            </div>
+            <div class="kpi-sep"></div>
+            <div class="kpi-block">
+              <span class="kpi-prd-lbl">M.A</span>
+              <span class="kpi-prd-val">3.690</span>
+            </div>
+            <span class="badge up"><i class="ti ti-trending-up"></i>+19,6%</span>
+          </div>
+        </div>
+
+        <div class="kpi-card amber">
+          <div class="kpi-label">Ticket Médio</div>
+          <div class="kpi-main-val">R$ 323</div>
+          <div class="kpi-compare">
+            <div class="kpi-block">
+              <span class="kpi-prd-lbl">A.A</span>
+              <span class="kpi-prd-val">R$ 343</span>
+            </div>
+            <div class="kpi-sep"></div>
+            <div class="kpi-block">
+              <span class="kpi-prd-lbl">M.A</span>
+              <span class="kpi-prd-val">R$ 319</span>
+            </div>
+            <span class="badge down"><i class="ti ti-trending-down"></i>-5,8%</span>
+          </div>
+        </div>
+
+        <div class="kpi-card red">
+          <div class="kpi-label">Devoluções</div>
+          <div class="kpi-main-val">148</div>
+          <div class="kpi-compare">
+            <div class="kpi-block">
+              <span class="kpi-prd-lbl">A.A</span>
+              <span class="kpi-prd-val">201</span>
+            </div>
+            <div class="kpi-sep"></div>
+            <div class="kpi-block">
+              <span class="kpi-prd-lbl">M.A</span>
+              <span class="kpi-prd-val">163</span>
+            </div>
+            <span class="badge up"><i class="ti ti-trending-up"></i>-26,4%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gráfico evolução + mix canais -->
+      <div class="row-2-3">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Evolução mensal — Faturamento</span>
+            <div class="legend-row">
+              <span class="legend-item"><span class="legend-dot" style="background:var(--blue)"></span>2025</span>
+              <span class="legend-item"><span class="legend-dot" style="background:#b3ccfc"></span>2024</span>
+            </div>
+          </div>
+          <div style="position:relative; height:180px">
+            <canvas id="chartEvol"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Mix de canais</span>
+          </div>
+          <div style="position:relative; height:130px">
+            <canvas id="chartCanal"></canvas>
+          </div>
+          <div class="legend-row" style="justify-content:center; margin-top:10px; gap:8px">
+            <span class="legend-item"><span class="legend-dot" style="background:var(--blue)"></span>Direto 42%</span>
+            <span class="legend-item"><span class="legend-dot" style="background:var(--green)"></span>Dist. 33%</span>
+            <span class="legend-item"><span class="legend-dot" style="background:var(--amber)"></span>E-com 15%</span>
+            <span class="legend-item"><span class="legend-dot" style="background:var(--red)"></span>Outros 10%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Produtos + Regiões + Meta -->
+      <div class="row-3">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Top produtos</span></div>
+          <div class="prog-row">
+            <!-- EDITAR: nomes e valores dos produtos -->
+            <div class="prog-item">
+              <div class="prog-info"><span class="prog-name">Produto Alpha</span><span class="prog-val">R$ 342K</span></div>
+              <div class="prog-track"><div class="prog-fill" style="width:100%;background:var(--blue)"></div></div>
+            </div>
+            <div class="prog-item">
+              <div class="prog-info"><span class="prog-name">Produto Beta</span><span class="prog-val">R$ 218K</span></div>
+              <div class="prog-track"><div class="prog-fill" style="width:64%;background:var(--green)"></div></div>
+            </div>
+            <div class="prog-item">
+              <div class="prog-info"><span class="prog-name">Produto Gamma</span><span class="prog-val">R$ 176K</span></div>
+              <div class="prog-track"><div class="prog-fill" style="width:51%;background:var(--amber)"></div></div>
+            </div>
+            <div class="prog-item">
+              <div class="prog-info"><span class="prog-name">Produto Delta</span><span class="prog-val">R$ 109K</span></div>
+              <div class="prog-track"><div class="prog-fill" style="width:32%;background:var(--purple)"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span class="card-title">Top regiões</span></div>
+          <div class="prog-row">
+            <!-- EDITAR: regiões e percentuais -->
+            <div class="prog-item">
+              <div class="prog-info"><span class="prog-name">Sudeste</span><span class="prog-val">48%</span></div>
+              <div class="prog-track"><div class="prog-fill" style="width:100%;background:var(--blue)"></div></div>
+            </div>
+            <div class="prog-item">
+              <div class="prog-info"><span class="prog-name">Sul</span><span class="prog-val">22%</span></div>
+              <div class="prog-track"><div class="prog-fill" style="width:46%;background:var(--green)"></div></div>
+            </div>
+            <div class="prog-item">
+              <div class="prog-info"><span class="prog-name">Nordeste</span><span class="prog-val">18%</span></div>
+              <div class="prog-track"><div class="prog-fill" style="width:37%;background:var(--amber)"></div></div>
+            </div>
+            <div class="prog-item">
+              <div class="prog-info"><span class="prog-name">Centro-Oeste</span><span class="prog-val">12%</span></div>
+              <div class="prog-track"><div class="prog-fill" style="width:25%;background:var(--red)"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span class="card-title">Meta do mês</span></div>
+          <div style="display:flex;justify-content:center;padding:6px 0">
+            <!-- EDITAR: percentual da meta → altere o valor 0.82 no JS abaixo -->
+            <canvas id="chartMeta" width="180" height="100"></canvas>
+          </div>
+          <div style="text-align:center">
+            <span style="font-size:28px;font-weight:600;font-family:'DM Mono',monospace" id="metaPct">82%</span>
+            <p style="font-size:11px;color:var(--text2);margin-top:2px">R$ 1,24M de R$ 1,50M</p>
+            <span class="badge flat" style="margin-top:8px;font-size:10px">Faltam R$ 260K</span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /page-overview -->
+
+
+    <!-- ================================================
+         PÁGINA 2 — CLIENTES POR VENDEDOR
+         ================================================ -->
+    <div id="page-vendedores" class="page">
+
+      <p class="section-label">Clientes por vendedor — <span class="lbl-period-ref">Março 2025</span></p>
+
+      <!-- KPIs vendedores -->
+      <div class="kpi-grid">
+        <div class="kpi-card blue">
+          <div class="kpi-label">Total clientes</div>
+          <div class="kpi-main-val">5.243</div>
+          <div class="kpi-compare">
+            <div class="kpi-block"><span class="kpi-prd-lbl">Ativos 60d</span><span class="kpi-prd-val">~872</span></div>
+            <div class="kpi-sep"></div>
+            <div class="kpi-block"><span class="kpi-prd-lbl">Vendedores</span><span class="kpi-prd-val">53</span></div>
+          </div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-label">Novos clientes</div>
+          <div class="kpi-main-val">47</div>
+          <div class="kpi-compare">
+            <div class="kpi-block"><span class="kpi-prd-lbl">A.A</span><span class="kpi-prd-val">31</span></div>
+            <div class="kpi-sep"></div>
+            <div class="kpi-block"><span class="kpi-prd-lbl">M.A</span><span class="kpi-prd-val">39</span></div>
+            <span class="badge up"><i class="ti ti-trending-up"></i>+51,6%</span>
+          </div>
+        </div>
+        <div class="kpi-card amber">
+          <div class="kpi-label">Sem compra 60d+</div>
+          <div class="kpi-main-val">2.780+</div>
+          <div class="kpi-compare">
+            <div class="kpi-block"><span class="kpi-prd-lbl">Base</span><span class="kpi-prd-val">5.243</span></div>
+            <div class="kpi-sep"></div>
+            <div class="kpi-block"><span class="kpi-prd-lbl">Top vend.</span><span class="kpi-prd-val">ROBERTO S.</span></div>
+          </div>
+        </div>
+        <div class="kpi-card red">
+          <div class="kpi-label">Churn (inativos)</div>
+          <div class="kpi-main-val">14</div>
+          <div class="kpi-compare">
+            <div class="kpi-block"><span class="kpi-prd-lbl">A.A</span><span class="kpi-prd-val">22</span></div>
+            <div class="kpi-sep"></div>
+            <div class="kpi-block"><span class="kpi-prd-lbl">M.A</span><span class="kpi-prd-val">18</span></div>
+            <span class="badge down"><i class="ti ti-trending-down"></i>-36,4%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabela vendedores + gráfico barras -->
+      <div class="row-2-3">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Ranking de vendedores</span>
+            <div class="filter-row">
+              <span class="filter-chip active">Todos</span>
+              <span class="filter-chip">SR</span>
+              <span class="filter-chip">PL</span>
+              <span class="filter-chip">JR</span>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Vendedor</th>
+                  <th>Clientes</th>
+                  <th>Fat. Mês</th>
+                  <th>A.A</th>
+                  <th>M.A</th>
+                  <th>Var%</th>
+                  <th>Meta</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- ===================================================
+                     EDITAR: substitua cada linha pelos dados reais.
+                     Para adicionar vendedor: copie um bloco <tr>...</tr>
+                     =================================================== -->
+                <tr>
+                  <td><span class="rank-badge gold">1</span></td>
+                  <td><div class="td-seller"><div class="avatar" style="background:#e8f0fe;color:var(--blue)">RS</div><div><div style="font-weight:500">Roberto Silva Dias</div><div style="font-size:11px;color:var(--text3)">RJ</div></div></div></td>
+                  <td class="td-mono">358</td>
+                  <td class="td-mono">—</td><td class="td-mono td-muted">—</td><td class="td-mono td-muted">—</td>
+                  <td><span class="badge flat">—</span></td>
+                  <td><div style="display:flex;align-items:center;gap:6px"><div class="mini-bar" style="width:56px"><div class="mini-fill" style="width:20%;background:var(--green)"></div></div><span style="font-size:11px;font-family:'DM Mono',monospace">20%</span></div></td>
+                  <td><span class="status-pill alert">Atenção</span></td>
+                </tr>
+                <tr>
+                  <td><span class="rank-badge silver">2</span></td>
+                  <td><div class="td-seller"><div class="avatar" style="background:#f3e8ff;color:var(--purple)">VI</div><div><div style="font-weight:500">Venda Interna</div><div style="font-size:11px;color:var(--text3)">—</div></div></div></td>
+                  <td class="td-mono">353</td>
+                  <td class="td-mono">—</td><td class="td-mono td-muted">—</td><td class="td-mono td-muted">—</td>
+                  <td><span class="badge flat">—</span></td>
+                  <td><div style="display:flex;align-items:center;gap:6px"><div class="mini-bar" style="width:56px"><div class="mini-fill" style="width:1%;background:var(--red)"></div></div><span style="font-size:11px;font-family:'DM Mono',monospace">1%</span></div></td>
+                  <td><span class="status-pill danger">Crítico</span></td>
+                </tr>
+                <tr>
+                  <td><span class="rank-badge bronze">3</span></td>
+                  <td><div class="td-seller"><div class="avatar" style="background:#d1fae5;color:var(--green)">EF</div><div><div style="font-weight:500">Eduardo A. Fontoura</div><div style="font-size:11px;color:var(--text3)">—</div></div></div></td>
+                  <td class="td-mono">327</td>
+                  <td class="td-mono">—</td><td class="td-mono td-muted">—</td><td class="td-mono td-muted">—</td>
+                  <td><span class="badge flat">—</span></td>
+                  <td><div style="display:flex;align-items:center;gap:6px"><div class="mini-bar" style="width:56px"><div class="mini-fill" style="width:14%;background:var(--amber)"></div></div><span style="font-size:11px;font-family:'DM Mono',monospace">14%</span></div></td>
+                  <td><span class="status-pill alert">Atenção</span></td>
+                </tr>
+                <tr>
+                  <td><span class="rank-badge">4</span></td>
+                  <td><div class="td-seller"><div class="avatar" style="background:#fef3c7;color:var(--amber)">GC</div><div><div style="font-weight:500">Guilherme S. Costa</div><div style="font-size:11px;color:var(--text3)">—</div></div></div></td>
+                  <td class="td-mono">325</td>
+                  <td class="td-mono">—</td><td class="td-mono td-muted">—</td><td class="td-mono td-muted">—</td>
+                  <td><span class="badge flat">—</span></td>
+                  <td><div style="display:flex;align-items:center;gap:6px"><div class="mini-bar" style="width:56px"><div class="mini-fill" style="width:14%;background:var(--amber)"></div></div><span style="font-size:11px;font-family:'DM Mono',monospace">14%</span></div></td>
+                  <td><span class="status-pill alert">Atenção</span></td>
+                </tr>
+                <tr>
+                  <td><span class="rank-badge">5</span></td>
+                  <td><div class="td-seller"><div class="avatar" style="background:#fee4e2;color:var(--red)">MT</div><div><div style="font-weight:500">Maria T. de Andrade</div><div style="font-size:11px;color:var(--text3)">—</div></div></div></td>
+                  <td class="td-mono">316</td>
+                  <td class="td-mono">—</td><td class="td-mono td-muted">—</td><td class="td-mono td-muted">—</td>
+                  <td><span class="badge flat">—</span></td>
+                  <td><div style="display:flex;align-items:center;gap:6px"><div class="mini-bar" style="width:56px"><div class="mini-fill" style="width:15%;background:var(--amber)"></div></div><span style="font-size:11px;font-family:'DM Mono',monospace">15%</span></div></td>
+                  <td><span class="status-pill alert">Atenção</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Gráfico clientes por vendedor -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Clientes por vendedor</span></div>
+          <div style="position:relative;height:220px">
+            <canvas id="chartVendedores"></canvas>
+          </div>
+          <div style="margin-top:14px">
+            <div class="card-header" style="margin-bottom:8px"><span class="card-title" style="font-size:12px">Novos vs Inativos</span></div>
+            <div style="position:relative;height:100px">
+              <canvas id="chartNovosInativos"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cartelas por vendedor (estilo kanban) -->
+      <div>
+        <div class="card-header" style="margin-bottom:10px">
+          <span class="card-title">Painel individual de clientes</span>
+          <span style="font-size:11px;color:var(--text3)">Ativo / Sem compra / Novo / Inativo</span>
+        </div>
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap:10px">
+          <!-- EDITAR: replicar este bloco por vendedor -->
+          <div class="card" style="padding:14px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+              <div class="avatar" style="background:#e8f0fe;color:var(--blue);width:36px;height:36px;font-size:12px">RS</div>
+              <div><div style="font-size:13px;font-weight:600">Roberto Silva Dias</div><div style="font-size:11px;color:var(--text3)">358 clientes</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+              <div style="background:var(--green-light);border-radius:var(--radius-md);padding:8px;text-align:center"><div style="font-size:18px;font-weight:600;color:#027a48;font-family:'DM Mono',monospace">72</div><div style="font-size:10px;color:#027a48">Ativos</div></div>
+              <div style="background:var(--amber-light);border-radius:var(--radius-md);padding:8px;text-align:center"><div style="font-size:18px;font-weight:600;color:#b45309;font-family:'DM Mono',monospace">156</div><div style="font-size:10px;color:#b45309">Sem compra</div></div>
+              <div style="background:var(--blue-light);border-radius:var(--radius-md);padding:8px;text-align:center"><div style="font-size:18px;font-weight:600;color:var(--blue);font-family:'DM Mono',monospace">—</div><div style="font-size:10px;color:var(--blue)">Novos</div></div>
+              <div style="background:var(--red-light);border-radius:var(--radius-md);padding:8px;text-align:center"><div style="font-size:18px;font-weight:600;color:#b42318;font-family:'DM Mono',monospace">130</div><div style="font-size:10px;color:#b42318">Inativos</div></div>
+            </div>
+          </div>
+
+          <div class="card" style="padding:14px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+              <div class="avatar" style="background:#f3e8ff;color:var(--purple);width:36px;height:36px;font-size:12px">VI</div>
+              <div><div style="font-size:13px;font-weight:600">Venda Interna</div><div style="font-size:11px;color:var(--text3)">353 clientes</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+              <div style="background:var(--green-light);border-radius:var(--radius-md);padding:8px;text-align:center"><div style="font-size:18px;font-weight:600;color:#027a48;font-family:'DM Mono',monospace">5</div><div style="font-size:10px;color:#027a48">Ativos</div></div>
+              <div style="background:var(--amber-light);border-radius:var(--radius-md);padding:8px;text-align:center"><div style="font-size:18px;font-weight:600;color:#b45309;font-family:'DM Mono',monospace">19</div><div style="font-size:10px;color:#b45309">Sem compra</div></div>
+              <div style="background:var(--blue-light);border-radius:var(--radius-md);padding:8px;text-align:center"><div style="font-size:18px;font-weight:600;color:var(--blue);font-family:'DM Mono',monospace">—</div><div style="font-size:10px;color:var(--blue)">Novos</div></div>
+              <div style="background:var(--red-light);border-radius:var(--radius-md);padding:8px;text-align:center"><div style="font-size:18px;font-weight:600;color:#b42318;font-family:'DM Mono',monospace">329</div><div style="font-size:10px;color:#b42318">Inativos</div></div>
+            </div>
+          </div>
+
+          <div class="card" style="padding:14px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+              <div class="avatar" style="background:#d1fae5;color:var(--green);width:36px;height:36px;font-size:12px">EF</div>
+              <div><div style="font-size:13px;font-weight:600">Eduardo A. Fontoura</div><div style="font-size:11px;color:var(--text3)">327 clientes</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+              <div style="background:var(--green-light);border-radius:var(--radius-md);padding:8px;text-align:center"><div style="font-size:18px;font-weight:600;color:#027a48;font-family:'DM Mono',monospace">47</div><div style="font-size:10px;color:#027a48">Ativos</div></div>
+              <div style="background:var(--amber-light);border-radius:var(--radius-md);padding:8px;text-align:center"><div style="font-size:18px;font-weight:600;color:#b45309;font-family:'DM Mono',monospace">101</div><div style="font-size:10px;color:#b45309">Sem compra</div></div>
+              <div style="background:var(--blue-light);border-radius:var(--radius-md);padding:8px;text-align:center"><div style="font-size:18px;font-weight:600;color:var(--blue);font-family:'DM Mono',monospace">—</div><div style="font-size:10px;color:var(--blue)">Novos</div></div>
+              <div style="background:var(--red-light);border-radius:var(--radius-md);padding:8px;text-align:center"><div style="font-size:18px;font-weight:600;color:#b42318;font-family:'DM Mono',monospace">179</div><div style="font-size:10px;color:#b42318">Inativos</div></div>
+            </div>
+          </div>
+
+          <div class="card" style="padding:14px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+              <div class="avatar" style="background:#fef3c7;color:var(--amber);width:36px;height:36px;font-size:12px">GC</div>
+              <div><div style="font-size:13px;font-weight:600">Guilherme S. Costa</div><div style="font-size:11px;color:var(--text3)">325 clientes</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+              <div style="background:var(--green-light);border-radius:var(--radius-md);padding:8px;text-align:center"><div style="font-size:18px;font-weight:600;color:#027a48;font-family:'DM Mono',monospace">47</div><div style="font-size:10px;color:#027a48">Ativos</div></div>
+              <div style="background:var(--amber-light);border-radius:var(--radius-md);padding:8px;text-align:center"><div style="font-size:18px;font-weight:600;color:#b45309;font-family:'DM Mono',monospace">99</div><div style="font-size:10px;color:#b45309">Sem compra</div></div>
+              <div style="background:var(--blue-light);border-radius:var(--radius-md);padding:8px;text-align:center"><div style="font-size:18px;font-weight:600;color:var(--blue);font-family:'DM Mono',monospace">—</div><div style="font-size:10px;color:var(--blue)">Novos</div></div>
+              <div style="background:var(--red-light);border-radius:var(--radius-md);padding:8px;text-align:center"><div style="font-size:18px;font-weight:600;color:#b42318;font-family:'DM Mono',monospace">179</div><div style="font-size:10px;color:#b42318">Inativos</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /page-vendedores -->
+
+
+    <!-- ================================================
+         PÁGINA 3 — INADIMPLÊNCIA
+         ================================================ -->
+    <div id="page-inadimplencia" class="page">
+
+      <p class="section-label">Inadimplência — <span class="lbl-period-ref">Março 2025</span></p>
+
+      <!-- KPIs inadimplência -->
+      <div class="inad-grid">
+        <div class="inad-kpi danger-card">
+          <div class="kpi-label">Total em aberto</div>
+          <div class="kpi-main-val" style="color:var(--red)">R$ 1,80M</div>
+          <div class="kpi-compare" style="margin-top:4px">
+            <div class="kpi-block"><span class="kpi-prd-lbl">Normal</span><span class="kpi-prd-val">R$ 782K</span></div>
+            <div class="kpi-sep"></div>
+            <div class="kpi-block"><span class="kpi-prd-lbl">Bloqueado</span><span class="kpi-prd-val">R$ 1,02M</span></div>
+            <span class="badge down"><i class="ti ti-alert-circle"></i>Crítico</span>
+          </div>
+        </div>
+        <div class="inad-kpi">
+          <div class="kpi-label">% sobre limite de crédito</div>
+          <div class="kpi-main-val">7,0%</div>
+          <div class="kpi-compare" style="margin-top:4px">
+            <div class="kpi-block"><span class="kpi-prd-lbl">Lim. Total</span><span class="kpi-prd-val">R$ 25,6M</span></div>
+            <div class="kpi-sep"></div>
+            <div class="kpi-block"><span class="kpi-prd-lbl">Bloqueados</span><span class="kpi-prd-val">807 cli.</span></div>
+          </div>
+        </div>
+        <div class="inad-kpi">
+          <div class="kpi-label">Clientes inadimplentes</div>
+          <div class="kpi-main-val">5.159</div>
+          <div class="kpi-compare" style="margin-top:4px">
+            <div class="kpi-block"><span class="kpi-prd-lbl">Normal</span><span class="kpi-prd-val">4.352</span></div>
+            <div class="kpi-sep"></div>
+            <div class="kpi-block"><span class="kpi-prd-lbl">Bloqueado</span><span class="kpi-prd-val">807</span></div>
+          </div>
+        </div>
+        <div class="inad-kpi">
+          <div class="kpi-label">Maior devedor</div>
+          <div class="kpi-main-val">R$ 52.803</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:4px">Variedades da Roça</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">Cezar Rodrigues P. da Luz</div>
+        </div>
+        <div class="inad-kpi">
+          <div class="kpi-label">Vencido +90 dias</div>
+          <div class="kpi-main-val" style="color:var(--red)">R$ 1,49M</div>
+          <div class="kpi-compare" style="margin-top:4px">
+            <div class="kpi-block"><span class="kpi-prd-lbl">61-90d</span><span class="kpi-prd-val">R$ 36K</span></div>
+            <div class="kpi-sep"></div>
+            <div class="kpi-block"><span class="kpi-prd-lbl">31-60d</span><span class="kpi-prd-val">R$ 276K</span></div>
+            <span class="badge down"><i class="ti ti-trending-down"></i>82,7% do total</span>
+          </div>
+        </div>
+        <div class="inad-kpi">
+          <div class="kpi-label">Vendedor c/ mais inadimp.</div>
+          <div class="kpi-main-val" style="font-size:14px;line-height:1.3">Alberto de Souza</div>
+          <div style="font-size:12px;color:var(--red);margin-top:4px;font-family:'DM Mono',monospace">R$ 246.757 &middot; 22 cli.</div>
+          <span class="status-pill danger" style="margin-top:6px;width:fit-content">Maior carteira</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Aging + gráfico evolução -->
+      <div class="row-2-3">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Aging da carteira (vencimento)</span></div>
+          <div class="aging-block">
+            <div class="aging-row">
+              <span class="aging-lbl">1–15 dias</span>
+              <div class="aging-track"><div class="aging-fill" style="width:0%;background:var(--amber)"></div></div>
+              <span class="aging-val">R$ 0</span>
+            </div>
+            <div class="aging-row">
+              <span class="aging-lbl">16–30 dias</span>
+              <div class="aging-track"><div class="aging-fill" style="width:0%;background:var(--amber)"></div></div>
+              <span class="aging-val">R$ 0</span>
+            </div>
+            <div class="aging-row">
+              <span class="aging-lbl">31–60 dias</span>
+              <div class="aging-track"><div class="aging-fill" style="width:19%;background:var(--amber)"></div></div>
+              <span class="aging-val">R$ 275.921</span>
+            </div>
+            <div class="aging-row">
+              <span class="aging-lbl">61–90 dias</span>
+              <div class="aging-track"><div class="aging-fill" style="width:3%;background:var(--red)"></div></div>
+              <span class="aging-val">R$ 36.351</span>
+            </div>
+            <div class="aging-row">
+              <span class="aging-lbl">+90 dias</span>
+              <div class="aging-track"><div class="aging-fill" style="width:100%;background:#7b0000"></div></div>
+              <span class="aging-val">R$ 1.488.845</span>
+            </div>
+          </div>
+          <div style="margin-top:14px;padding-top:14px;border-top:0.5px solid var(--border)">
+            <div class="card-header" style="margin-bottom:8px"><span class="card-title" style="font-size:12px">Inadimplência por vendedor</span></div>
+            <div class="aging-block">
+              <div class="aging-row">
+                <span class="aging-lbl">Alberto S.</span>
+                <div class="aging-track"><div class="aging-fill" style="width:100%;background:var(--red)"></div></div>
+                <span class="aging-val">R$ 246.757</span>
+              </div>
+              <div class="aging-row">
+                <span class="aging-lbl">Alexandro O.</span>
+                <div class="aging-track"><div class="aging-fill" style="width:82%;background:var(--red)"></div></div>
+                <span class="aging-val">R$ 203.387</span>
+              </div>
+              <div class="aging-row">
+                <span class="aging-lbl">Venda Interna</span>
+                <div class="aging-track"><div class="aging-fill" style="width:72%;background:var(--amber)"></div></div>
+                <span class="aging-val">R$ 176.857</span>
+              </div>
+              <div class="aging-row">
+                <span class="aging-lbl">Cezar R.</span>
+                <div class="aging-track"><div class="aging-fill" style="width:63%;background:var(--amber)"></div></div>
+                <span class="aging-val">R$ 154.839</span>
+              </div>
+              <div class="aging-row">
+                <span class="aging-lbl">Maria T.</span>
+                <div class="aging-track"><div class="aging-fill" style="width:50%;background:var(--amber)"></div></div>
+                <span class="aging-val">R$ 124.491</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span class="card-title">Evolução — saldo inadimplente</span></div>
+          <div style="position:relative;height:180px">
+            <canvas id="chartInad"></canvas>
+          </div>
+          <div style="margin-top:14px">
+            <div class="card-header" style="margin-bottom:8px"><span class="card-title" style="font-size:12px">Em aberto vs recuperado</span></div>
+            <div style="position:relative;height:100px">
+              <canvas id="chartRecuperado"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabela detalhada inadimplentes -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Clientes inadimplentes — detalhado</span>
+          <div class="filter-row">
+            <span class="filter-chip active">Todos</span>
+            <span class="filter-chip">+30d</span>
+            <span class="filter-chip">+60d</span>
+            <span class="filter-chip">+90d</span>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Vendedor</th>
+                <th>Valor em aberto</th>
+                <th>A.A (mesmo período)</th>
+                <th>M.A</th>
+                <th>Var%</th>
+                <th>Dias atraso</th>
+                <th>Último pagamento</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-weight:500">Variedades da Roça</td>
+                <td class="td-muted">Cezar Rodrigues P. da Luz</td>
+                <td class="td-mono" style="color:var(--red)">R$ 52.803</td>
+                <td class="td-mono td-muted">—</td><td class="td-mono td-muted">—</td>
+                <td><span class="badge flat">—</span></td>
+                <td class="td-mono"><span class="status-pill danger">+90 dias</span></td>
+                <td class="td-muted" style="font-size:12px">—</td>
+                <td><span class="status-pill danger">Crítico</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:500">Dom Atacadista Petropolis</td>
+                <td class="td-muted">Alberto de Souza P. Filho</td>
+                <td class="td-mono" style="color:var(--red)">R$ 29.676</td>
+                <td class="td-mono td-muted">—</td><td class="td-mono td-muted">—</td>
+                <td><span class="badge flat">—</span></td>
+                <td class="td-mono"><span class="status-pill danger">+90 dias</span></td>
+                <td class="td-muted" style="font-size:12px">—</td>
+                <td><span class="status-pill danger">Crítico</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:500">Dom Atacadista Angra 2</td>
+                <td class="td-muted">Alberto de Souza P. Filho</td>
+                <td class="td-mono" style="color:var(--red)">R$ 28.657</td>
+                <td class="td-mono td-muted">—</td><td class="td-mono td-muted">—</td>
+                <td><span class="badge flat">—</span></td>
+                <td class="td-mono"><span class="status-pill danger">+90 dias</span></td>
+                <td class="td-muted" style="font-size:12px">—</td>
+                <td><span class="status-pill danger">Crítico</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:500">Dom Atacadista Angra 1</td>
+                <td class="td-muted">Alberto de Souza P. Filho</td>
+                <td class="td-mono" style="color:var(--red)">R$ 27.207</td>
+                <td class="td-mono td-muted">—</td><td class="td-mono td-muted">—</td>
+                <td><span class="badge flat">—</span></td>
+                <td class="td-mono"><span class="status-pill danger">+90 dias</span></td>
+                <td class="td-muted" style="font-size:12px">—</td>
+                <td><span class="status-pill danger">Crítico</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:500">Dom Atacadista Araruama</td>
+                <td class="td-muted">Alberto de Souza P. Filho</td>
+                <td class="td-mono" style="color:var(--amber)">R$ 22.992</td>
+                <td class="td-mono td-muted">—</td><td class="td-mono td-muted">—</td>
+                <td><span class="badge flat">—</span></td>
+                <td class="td-mono"><span class="status-pill danger">+90 dias</span></td>
+                <td class="td-muted" style="font-size:12px">—</td>
+                <td><span class="status-pill danger">Crítico</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:500">Efata Atacadista</td>
+                <td class="td-muted">Venda Interna</td>
+                <td class="td-mono" style="color:var(--amber)">R$ 22.655</td>
+                <td class="td-mono td-muted">—</td><td class="td-mono td-muted">—</td>
+                <td><span class="badge flat">—</span></td>
+                <td class="td-mono"><span class="status-pill danger">BLOQUEADO</span></td>
+                <td class="td-muted" style="font-size:12px">—</td>
+                <td><span class="status-pill danger">Bloqueado</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:500">Dom Atacadista São P. Aldeia</td>
+                <td class="td-muted">Alberto de Souza P. Filho</td>
+                <td class="td-mono" style="color:var(--amber)">R$ 20.691</td>
+                <td class="td-mono td-muted">—</td><td class="td-mono td-muted">—</td>
+                <td><span class="badge flat">—</span></td>
+                <td class="td-mono"><span class="status-pill danger">+90 dias</span></td>
+                <td class="td-muted" style="font-size:12px">—</td>
+                <td><span class="status-pill danger">Crítico</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:500">Dom Atacadista Resende</td>
+                <td class="td-muted">Alberto de Souza P. Filho</td>
+                <td class="td-mono" style="color:var(--amber)">R$ 17.373</td>
+                <td class="td-mono td-muted">—</td><td class="td-mono td-muted">—</td>
+                <td><span class="badge flat">—</span></td>
+                <td class="td-mono"><span class="status-pill alert">31–60 dias</span></td>
+                <td class="td-muted" style="font-size:12px">—</td>
+                <td><span class="status-pill alert">Atenção</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:500">Dom Atacadista Teresopolis</td>
+                <td class="td-muted">Alberto de Souza P. Filho</td>
+                <td class="td-mono" style="color:var(--amber)">R$ 17.158</td>
+                <td class="td-mono td-muted">—</td><td class="td-mono td-muted">—</td>
+                <td><span class="badge flat">—</span></td>
+                <td class="td-mono"><span class="status-pill alert">31–60 dias</span></td>
+                <td class="td-muted" style="font-size:12px">—</td>
+                <td><span class="status-pill alert">Atenção</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight:500">Dom Atacadista Maricá</td>
+                <td class="td-muted">Alberto de Souza P. Filho</td>
+                <td class="td-mono" style="color:var(--amber)">R$ 16.878</td>
+                <td class="td-mono td-muted">—</td><td class="td-mono td-muted">—</td>
+                <td><span class="badge flat">—</span></td>
+                <td class="td-mono"><span class="status-pill alert">31–60 dias</span></td>
+                <td class="td-muted" style="font-size:12px">—</td>
+                <td><span class="status-pill alert">Atenção</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /page-inadimplencia -->
+
+
+    <!-- ================================================
+         PÁGINAS FUTURAS (Estoque, Expedição)
+         ================================================ -->
+    <div id="page-estoque" class="page">
+      <div class="card" style="padding:40px;text-align:center">
+        <i class="ti ti-box" style="font-size:40px;color:var(--text3)"></i>
+        <p style="margin-top:12px;font-weight:500">Módulo Estoque</p>
+        <p style="color:var(--text2);font-size:13px;margin-top:4px">Em construção — configure aqui seus KPIs de estoque</p>
+      </div>
+    </div>
+    <div id="page-expedicao" class="page">
+      <div class="card" style="padding:40px;text-align:center">
+        <i class="ti ti-truck" style="font-size:40px;color:var(--text3)"></i>
+        <p style="margin-top:12px;font-weight:500">Módulo Expedição</p>
+        <p style="color:var(--text2);font-size:13px;margin-top:4px">Em construção — configure aqui seus KPIs de expedição</p>
+      </div>
+    </div>
+
+  </main>
+</div><!-- /layout -->
+
+
+<!-- ======================================================
+     JAVASCRIPT
+     ====================================================== -->
+<script>
+
+/* -------------------------------------------------------
+   NAVEGAÇÃO ENTRE PÁGINAS
+   ------------------------------------------------------- */
+const pages = ['overview','vendedores','inadimplencia','estoque','expedicao'];
+const pageNames = {
+  overview:'/ Visão Geral',
+  vendedores:'/ Clientes por Vendedor',
+  inadimplencia:'/ Inadimplência',
+  estoque:'/ Estoque',
+  expedicao:'/ Expedição'
+};
+let currentPage = 'overview';
+let chartsInitialized = {};
+
+function goPage(name, navEl) {
+  pages.forEach(p => {
+    document.getElementById('page-'+p).classList.remove('active');
+  });
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(navEl) navEl.classList.add('active');
+  document.getElementById('breadcrumb').textContent = pageNames[name] || '';
+  currentPage = name;
+  setTimeout(() => initCharts(name), 50);
+}
+
+/* -------------------------------------------------------
+   SELEÇÃO DE PERÍODO
+   ------------------------------------------------------- */
+const periodLabels = {
+  'Jan':'Janeiro 2025','Fev':'Fevereiro 2025','Mar':'Março 2025',
+  'Abr':'Abril 2025','Mai':'Maio 2025','Jun':'Junho 2025'
+};
+function setPeriod(el, mes) {
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  const lbl = periodLabels[mes] || mes;
+  document.getElementById('lbl-period').textContent = lbl;
+  document.querySelectorAll('.lbl-period-ref').forEach(e => e.textContent = lbl);
+}
+
+/* -------------------------------------------------------
+   INICIALIZAÇÃO DE GRÁFICOS
+   ------------------------------------------------------- */
+const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+const textCol = isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.38)';
+const gridCol = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.color = textCol;
+
+function initCharts(page) {
+  if(page === 'overview' && !chartsInitialized.overview) {
+    chartsInitialized.overview = true;
+    buildEvolChart();
+    buildCanalChart();
+    buildMetaGauge();
+  }
+  if(page === 'vendedores' && !chartsInitialized.vendedores) {
+    chartsInitialized.vendedores = true;
+    buildVendedoresChart();
+    buildNovosInativosChart();
+  }
+  if(page === 'inadimplencia' && !chartsInitialized.inadimplencia) {
+    chartsInitialized.inadimplencia = true;
+    buildInadChart();
+    buildRecuperadoChart();
+  }
+}
+
+/* --- EVOLUÇÃO FATURAMENTO --- */
+function buildEvolChart() {
+  // EDITAR: dados mensais de faturamento 2024 e 2025 (em R$ mil)
+  const data2024 = [850, 910, 1100, 1080, 1020, 1150, 1200, 1140, 1090, 1180, 1250, 1310];
+  const data2025 = [980, 1050, 1240, null, null, null, null, null, null, null, null, null];
+  new Chart(document.getElementById('chartEvol'), {
+    type:'line',
+    data:{
+      labels:['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],
+      datasets:[
+        { label:'2025', data:data2025, borderColor:'#1a6ef5', backgroundColor:'rgba(26,110,245,0.07)',
+          borderWidth:2, pointRadius:3, pointBackgroundColor:'#1a6ef5', tension:.4, fill:true },
+        { label:'2024', data:data2024, borderColor:'rgba(26,110,245,0.35)', borderDash:[4,3],
+          borderWidth:1.5, pointRadius:2, tension:.4, fill:false }
+      ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ grid:{color:gridCol}, ticks:{font:{size:10}} },
+        y:{ grid:{color:gridCol}, ticks:{font:{size:10}, callback:v=>'R$'+(v/1000).toFixed(0)+'K'} }
+      }
+    }
+  });
+}
+
+/* --- MIX CANAIS --- */
+function buildCanalChart() {
+  // EDITAR: canais e percentuais
+  new Chart(document.getElementById('chartCanal'), {
+    type:'doughnut',
+    data:{
+      labels:['Direto','Distribuidor','E-commerce','Outros'],
+      datasets:[{ data:[42,33,15,10],
+        backgroundColor:['#1a6ef5','#12b76a','#f79009','#f04438'],
+        borderWidth:0, hoverOffset:4 }]
+    },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'70%',
+      plugins:{ legend:{display:false} }
+    }
+  });
+}
+
+/* --- META GAUGE --- */
+function buildMetaGauge() {
+  // EDITAR: percentual da meta (0.0 a 1.0)
+  const pct = 0.82;
+  const c = document.getElementById('chartMeta');
+  const ctx = c.getContext('2d');
+  const cx=90, cy=90, r=68, lw=14;
+  ctx.clearRect(0,0,180,100);
+  ctx.beginPath(); ctx.arc(cx,cy,r,Math.PI,2*Math.PI);
+  ctx.strokeStyle=isDark?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.07)';
+  ctx.lineWidth=lw; ctx.lineCap='round'; ctx.stroke();
+  const g=ctx.createLinearGradient(cx-r,cy,cx+r,cy);
+  g.addColorStop(0,'#f79009'); g.addColorStop(.65,'#12b76a'); g.addColorStop(1,'#1a6ef5');
+  ctx.beginPath(); ctx.arc(cx,cy,r,Math.PI,Math.PI+(Math.PI*pct));
+  ctx.strokeStyle=g; ctx.lineWidth=lw; ctx.lineCap='round'; ctx.stroke();
+  document.getElementById('metaPct').textContent = Math.round(pct*100)+'%';
+}
+
+/* --- CLIENTES POR VENDEDOR (barras) --- */
+function buildVendedoresChart() {
+  // EDITAR: vendedores e quantidade de clientes
+  new Chart(document.getElementById('chartVendedores'), {
+    type:'bar',
+    data:{
+      labels:['Roberto S.','Venda Int.','Eduardo F.','Guilherme C.','Maria T.'],
+      datasets:[
+        { label:'Ativos',   data:[72,5,47,47,48],  backgroundColor:'#1a6ef5', borderRadius:4, borderSkipped:false },
+        { label:'Sem compra',data:[156, 19, 101, 99, 115],  backgroundColor:'#fbbf24', borderRadius:4, borderSkipped:false },
+        { label:'Novos',    data:[130, 329, 179, 179, 153],           backgroundColor:'#f04438', borderRadius:4, borderSkipped:false }
+      ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ stacked:true, grid:{display:false}, ticks:{font:{size:10}} },
+        y:{ stacked:true, grid:{color:gridCol}, ticks:{font:{size:10}} }
+      }
+    }
+  });
+}
+
+/* --- NOVOS vs INATIVOS --- */
+function buildNovosInativosChart() {
+  // EDITAR: meses e novos/inativos
+  new Chart(document.getElementById('chartNovosInativos'), {
+    type:'bar',
+    data:{
+      labels:['Jan','Fev','Mar'],
+      datasets:[
+        { label:'Novos',   data:[31,39,47], backgroundColor:'#1a6ef5', borderRadius:3 },
+        { label:'Inativos',data:[22,18,14], backgroundColor:'#f04438', borderRadius:3 }
+      ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ grid:{display:false}, ticks:{font:{size:10}} },
+        y:{ grid:{color:gridCol}, ticks:{font:{size:10}} }
+      }
+    }
+  });
+}
+
+/* --- INADIMPLÊNCIA EVOLUÇÃO --- */
+function buildInadChart() {
+  // EDITAR: saldo inadimplente mensal (R$ mil)
+  new Chart(document.getElementById('chartInad'), {
+    type:'line',
+    data:{
+      labels:['Ago','Set','Out','Nov','Dez','Jan','Fev','Mar'],
+      datasets:[
+        { label:'Saldo',data:[310,295,267,241,228,214,198,187],
+          borderColor:'#f04438', backgroundColor:'rgba(240,68,56,0.07)',
+          borderWidth:2, pointRadius:3, pointBackgroundColor:'#f04438', tension:.4, fill:true }
+      ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ grid:{color:gridCol}, ticks:{font:{size:10}} },
+        y:{ grid:{color:gridCol}, ticks:{font:{size:10}, callback:v=>'R$'+v+'K'} }
+      }
+    }
+  });
+}
+
+/* --- RECUPERADO vs EM ABERTO --- */
+function buildRecuperadoChart() {
+  // EDITAR: recuperado e em aberto mensalmente
+  new Chart(document.getElementById('chartRecuperado'), {
+    type:'bar',
+    data:{
+      labels:['Jan','Fev','Mar'],
+      datasets:[
+        { label:'Recuperado', data:[18,24,29.8], backgroundColor:'#12b76a', borderRadius:3 },
+        { label:'Em aberto',  data:[214,198,187], backgroundColor:'rgba(240,68,56,0.7)', borderRadius:3 }
+      ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ grid:{display:false}, ticks:{font:{size:10}} },
+        y:{ grid:{color:gridCol}, ticks:{font:{size:10}, callback:v=>'R$'+v+'K'} }
+      }
+    }
+  });
+}
+
+/* -------------------------------------------------------
+   INICIALIZA A PÁGINA INICIAL
+   ------------------------------------------------------- */
+window.addEventListener('load', () => initCharts('overview'));
+
+</script>
+</body>
+</html>
