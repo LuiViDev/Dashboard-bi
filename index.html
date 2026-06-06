@@ -138,6 +138,13 @@ tbody td{padding:8px 12px;vertical-align:middle}
   :root { --bg:#fff; --surface:#fff; --surface2:#f9fafb; --text1:#111827; --text2:#6b7280; --border:rgba(0,0,0,0.15); }
   body { font-size: 12px; }
   .sidebar, .topbar, .modal-overlay, #printBtn, #shareBtn, .filter-row, .search-input, .year-select, #monthPills { display:none !important; }
+  body[data-printing-modal] .layout { display:none !important; }
+  body[data-printing-modal] .modal-overlay { display:flex !important; position:static !important; background:none !important; padding:0 !important; }
+  body[data-printing-modal] .modal { box-shadow:none !important; max-height:none !important; width:100% !important; border:none !important; }
+  body[data-printing-modal] .modal-search { display:flex !important; }
+  body[data-printing-modal] #modalFilters { display:none !important; }
+  body[data-printing-modal] .table-wrap { max-height:none !important; overflow:visible !important; }
+  body[data-printing-modal] .share-modal-overlay { display:none !important; }
   .layout { display:block; height:auto; overflow:visible; }
   .main { overflow:visible; padding:0; gap:12px; }
   .page { display:none !important; }
@@ -214,8 +221,8 @@ tbody td{padding:8px 12px;vertical-align:middle}
       <span class="pill" onclick="setMonth(12,this)">Dez</span>
     </div>
     <div class="topbar-icon" title="Atualizar" onclick="applyFilters()"><i class="ti ti-refresh"></i></div>
-    <div class="topbar-icon" id="printBtn" title="Exportar PDF" onclick="exportPDF()" style="color:var(--red)"><i class="ti ti-file-type-pdf"></i></div>
-    <div class="topbar-icon" id="shareBtn" title="Compartilhar" onclick="openShare()" style="color:var(--blue)"><i class="ti ti-share"></i></div>
+    <div onclick="exportPDF()" id="printBtn" style="display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:.5px solid rgba(240,68,56,.4);background:var(--red-light);color:var(--red);cursor:pointer;font-size:12px;font-weight:600"><i class="ti ti-file-type-pdf"></i><span>PDF</span></div>
+    <div onclick="openShare()" id="shareBtn" style="display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:.5px solid rgba(26,110,245,.4);background:var(--blue-light);color:var(--blue);cursor:pointer;font-size:12px;font-weight:600"><i class="ti ti-share"></i><span>Compartilhar</span></div>
   </div>
 </header>
 
@@ -439,17 +446,33 @@ tbody td{padding:8px 12px;vertical-align:middle}
         <div class="modal-title" id="modalTitle">—</div>
         <div class="stat-chips" id="modalStats" style="margin-top:6px"></div>
       </div>
-      <div class="modal-close" onclick="document.getElementById('vendModal').classList.remove('open')"><i class="ti ti-x"></i></div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <div class="topbar-icon" title="Exportar PDF" onclick="printModal()" style="color:var(--red);border:.5px solid var(--border)"><i class="ti ti-file-type-pdf"></i></div>
+        <div class="topbar-icon" title="Compartilhar" onclick="shareModal()" style="color:var(--blue);border:.5px solid var(--border)"><i class="ti ti-share"></i></div>
+        <div class="modal-close" onclick="document.getElementById('vendModal').classList.remove('open')"><i class="ti ti-x"></i></div>
+      </div>
     </div>
-    <div class="modal-search">
+    <div class="modal-search" style="display:flex;flex-direction:column;gap:8px">
       <input class="search-input" id="modalSearch" style="width:100%" placeholder="🔍 Buscar cliente..." oninput="renderModalTable()"/>
+      <div class="filter-row" id="modalFilters">
+        <span class="filter-chip active" onclick="setModalFilter('todos',this)">Todos <span id="mc-todos" class="count-badge" style="margin-left:4px">0</span></span>
+        <span class="filter-chip green-chip" onclick="setModalFilter('ativo',this)">Ativos <span id="mc-ativo" class="count-badge" style="margin-left:4px">0</span></span>
+        <span class="filter-chip amber-chip" onclick="setModalFilter('semcompra',this)">Sem compra <span id="mc-semcompra" class="count-badge" style="margin-left:4px">0</span></span>
+        <span class="filter-chip red-chip" onclick="setModalFilter('inativo',this)">Inativos <span id="mc-inativo" class="count-badge" style="margin-left:4px">0</span></span>
+      </div>
     </div>
     <div class="modal-body">
-      <div class="table-wrap" style="max-height:calc(85vh - 180px)">
+      <div class="table-wrap" style="max-height:calc(85vh - 220px)">
         <table><thead><tr>
-          <th>Cliente</th><th>Cidade/UF</th><th>Última compra</th><th>Status</th>
+          <th onclick="sortModal('f')">Cliente</th>
+          <th onclick="sortModal('ci')">Cidade/UF</th>
+          <th onclick="sortModal('d')">Última compra</th>
+          <th onclick="sortModal('s')">Status</th>
         </tr></thead>
         <tbody id="modalTbody"></tbody></table>
+      </div>
+      <div style="padding:10px 16px;font-size:11px;color:var(--text2);border-top:.5px solid var(--border)">
+        Exibindo <strong id="modalCount">0</strong> clientes
       </div>
     </div>
   </div>
@@ -660,30 +683,96 @@ function renderVendTable() {
 
 // ===== MODAL =====
 let modalClients = [];
+let modalFilterMode = 'todos';
+let modalSortKey = 'f'; let modalSortDir = 1;
+
 function openModal(vendorName) {
   modalVendor = vendorName;
   modalClients = CLIENTES.filter(c=>c.v===vendorName);
+  modalFilterMode = 'todos';
+  modalSortKey = 'f'; modalSortDir = 1;
   const v = VENDORS.find(x=>x.n===vendorName)||{};
   document.getElementById('modalTitle').textContent = vendorName;
+  const inadTotal = INAD.filter(r=>r.vendedor===vendorName).reduce((s,r)=>s+r.valor,0);
   document.getElementById('modalStats').innerHTML = `
     <span class="stat-chip blue">${v.t||modalClients.length} clientes</span>
     <span class="stat-chip green">${v.a||0} ativos</span>
     <span class="stat-chip amber">${v.s||0} sem compra</span>
-    <span class="stat-chip red">${v.i||0} inativos</span>`;
+    <span class="stat-chip red">${v.i||0} inativos</span>`+
+    (inadTotal>0?`<span class="stat-chip" style="background:var(--red-light);color:var(--red)">Inad: ${fmt(inadTotal)}</span>`:'');
+  // reset filter chips
+  document.querySelectorAll('#modalFilters .filter-chip').forEach(c=>c.classList.remove('active'));
+  document.querySelector('#modalFilters .filter-chip').classList.add('active');
+  // update count badges
+  ['todos','ativo','semcompra','inativo'].forEach(s=>{
+    const cnt = s==='todos'?modalClients.length:modalClients.filter(c=>c.s===s).length;
+    const el = document.getElementById('mc-'+s);
+    if(el) el.textContent=cnt;
+  });
   document.getElementById('modalSearch').value='';
   renderModalTable();
   document.getElementById('vendModal').classList.add('open');
 }
 
+function setModalFilter(mode, el) {
+  modalFilterMode = mode;
+  document.querySelectorAll('#modalFilters .filter-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  renderModalTable();
+}
+
+function sortModal(key) {
+  if(modalSortKey===key) modalSortDir*=-1; else {modalSortKey=key; modalSortDir=1;}
+  renderModalTable();
+}
+
 function renderModalTable() {
   const q = (document.getElementById('modalSearch').value||'').toUpperCase();
-  const list = modalClients.filter(c=>!q||c.f.toUpperCase().includes(q)||(c.ci||'').toUpperCase().includes(q));
+  let list = modalClients.filter(c=>{
+    if(modalFilterMode!=='todos' && c.s!==modalFilterMode) return false;
+    if(q && !c.f.toUpperCase().includes(q) && !(c.ci||'').toUpperCase().includes(q)) return false;
+    return true;
+  }).slice().sort((a,b)=>{
+    let av=a[modalSortKey]||'', bv=b[modalSortKey]||'';
+    return typeof av==='string'?av.localeCompare(bv)*modalSortDir:(av-bv)*modalSortDir;
+  });
+  document.getElementById('modalCount').textContent = list.length;
   document.getElementById('modalTbody').innerHTML = list.map(c=>`<tr>
     <td style="font-weight:500;font-size:12px">${c.f}</td>
     <td class="td-muted td-mono" style="font-size:11px">${c.ci||'—'}${c.u?' / '+c.u:''}</td>
     <td class="td-mono td-muted" style="font-size:11px">${c.d||'—'}</td>
     <td>${statusPill(c.s)}</td>
-  </tr>`).join('');
+  </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text3)">Nenhum cliente encontrado</td></tr>';
+}
+
+function printModal() {
+  const vendorName = modalVendor||'Vendedor';
+  const oldTitle = document.title;
+  document.title = `Clientes — ${vendorName}`;
+  // temporarily show only modal content in print
+  document.body.setAttribute('data-printing-modal','1');
+  window.print();
+  document.body.removeAttribute('data-printing-modal');
+  document.title = oldTitle;
+}
+
+function shareModal() {
+  const vendorName = modalVendor||'Vendedor';
+  const v = VENDORS.find(x=>x.n===vendorName)||{};
+  const url = window.location.href;
+  const text = `*BI Supraalimentos — ${vendorName}*
+
+Total: ${v.t||0} clientes
+Ativos: ${v.a||0} | Sem compra: ${v.s||0} | Inativos: ${v.i||0}
+
+${url}`;
+  if(navigator.share){navigator.share({title:'BI Supraalimentos',text,url}).catch(()=>{});return;}
+  const waText = encodeURIComponent(text);
+  const emailSub = encodeURIComponent(`Clientes — ${vendorName}`);
+  const emailBody = encodeURIComponent(text.replace(/\*/g,''));
+  document.getElementById('whatsappBtn').href=`https://wa.me/?text=${waText}`;
+  document.getElementById('emailBtn').href=`mailto:?subject=${emailSub}&body=${emailBody}`;
+  document.getElementById('shareOverlay').classList.add('open');
 }
 
 function closeModal(e) {
