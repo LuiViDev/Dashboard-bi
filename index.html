@@ -425,21 +425,25 @@ tbody td{padding:8px 12px;vertical-align:middle}
   <div class="share-modal" onclick="event.stopPropagation()">
     <div class="share-title"><i class="ti ti-share" style="margin-right:6px"></i>Compartilhar dashboard</div>
     <div class="share-options">
-      <div class="share-btn" onclick="exportPDFAndShare('whatsapp')">
+      <div class="share-btn" onclick="gerarECompartilhar('compartilhar')">
+        <div class="icon" style="background:#d1fae5;color:#25D366"><i class="ti ti-share"></i></div>
+        <div><div style="font-weight:600">Compartilhar PDF</div><div style="font-size:10px;color:var(--text2)">WhatsApp, Drive, etc.</div></div>
+      </div>
+      <div class="share-btn" onclick="gerarECompartilhar('whatsapp')">
         <div class="icon" style="background:#d1fae5;color:#25D366"><i class="ti ti-brand-whatsapp"></i></div>
-        <div><div style="font-weight:600">WhatsApp</div><div style="font-size:10px;color:var(--text2)">Gera PDF e abre WhatsApp</div></div>
+        <div><div style="font-weight:600">WhatsApp</div><div style="font-size:10px;color:var(--text2)">Gera PDF → abre WhatsApp</div></div>
       </div>
-      <div class="share-btn" onclick="exportPDFAndShare('email')">
+      <div class="share-btn" onclick="gerarECompartilhar('email')">
         <div class="icon" style="background:var(--blue-light);color:var(--blue)"><i class="ti ti-mail"></i></div>
-        <div><div style="font-weight:600">E-mail</div><div style="font-size:10px;color:var(--text2)">Gera PDF e abre e-mail</div></div>
+        <div><div style="font-weight:600">E-mail</div><div style="font-size:10px;color:var(--text2)">Gera PDF → abre e-mail</div></div>
       </div>
-      <div class="share-btn" onclick="exportPDFAndShare('download')">
+      <div class="share-btn" onclick="gerarECompartilhar('download')">
         <div class="icon" style="background:var(--red-light);color:var(--red)"><i class="ti ti-file-type-pdf"></i></div>
-        <div><div style="font-weight:600">Baixar PDF</div><div style="font-size:10px;color:var(--text2)">Salva o PDF no dispositivo</div></div>
+        <div><div style="font-weight:600">Baixar PDF</div><div style="font-size:10px;color:var(--text2)">Salva no dispositivo</div></div>
       </div>
       <div class="share-btn" onclick="copyLink()">
         <div class="icon" style="background:var(--surface2);color:var(--text2)"><i class="ti ti-link"></i></div>
-        <div><div style="font-weight:600">Copiar link</div><div style="font-size:10px;color:var(--text2)">Compartilha a página</div></div>
+        <div><div style="font-weight:600">Copiar link</div><div style="font-size:10px;color:var(--text2)">Só o link da página</div></div>
       </div>
     </div>
     <div class="copy-feedback" id="copyFeedback">✓ Link copiado!</div>
@@ -897,70 +901,92 @@ async function exportPDF() {
   if(result) result.pdf.save(result.filename);
 }
 
-async function exportPDFAndShare(method) {
-  document.getElementById('shareOverlay').classList.remove('open');
-  const isModal = document.getElementById('vendModal').classList.contains('open');
-  let targetEl, pageName, period;
-  if(isModal) {
-    targetEl = document.querySelector('#vendModal .modal');
-    pageName = (modalVendor||'Vendedor').replace(/\s+/g,'-').substring(0,20);
-    period = 'Clientes';
-  } else {
-    targetEl = document.getElementById('page-'+currentPage);
-    pageName = {'overview':'Visao-Geral','vendedores':'Vendedores','inadimplencia':'Inadimplencia'}[currentPage]||currentPage;
-    period = (document.getElementById('lbl-period')?.textContent||'').replace(/\s+/g,'-');
-  }
-  const filename = `BI-Supraalimentos-${pageName}-${period}.pdf`;
-  const result = await generatePDF(targetEl, filename);
-  if(!result) return;
-
-  if(method==='download' || method==='pdf') {
-    result.pdf.save(result.filename);
-    return;
-  }
-
-  const pdfFile = new File([result.blob], result.filename, {type:'application/pdf'});
-
-  if(method==='native' || (method==='whatsapp'&&/Android|iPhone|iPad/i.test(navigator.userAgent))) {
-    if(navigator.canShare&&navigator.canShare({files:[pdfFile]})) {
-      try { await navigator.share({files:[pdfFile], title:'BI Supraalimentos', text:'Relatório BI Supraalimentos'}); return; }
-      catch(e){ if(e.name!=='AbortError') result.pdf.save(result.filename); return; }
-    }
-  }
-
-  if(method==='whatsapp') {
-    // Desktop: download + open WhatsApp
-    result.pdf.save(result.filename);
-    setTimeout(()=>{ window.open('https://web.whatsapp.com/','_blank'); }, 800);
-    showToast('PDF baixado! Abra o WhatsApp e anexe o arquivo.');
-    return;
-  }
-
-  if(method==='email') {
-    result.pdf.save(result.filename);
-    const sub = encodeURIComponent(`BI Supraalimentos — ${pageName}`);
-    const body = encodeURIComponent('Segue em anexo o relatório BI Supraalimentos.\n\n(Anexe o PDF baixado a este e-mail)');
-    window.location.href = `mailto:?subject=${sub}&body=${body}`;
-    return;
-  }
-
-  result.pdf.save(result.filename);
-}
-
-function showToast(msg) {
+function showToast(msg, duration=4000) {
   let t = document.getElementById('toast');
   if(!t){ t=document.createElement('div'); t.id='toast';
-    t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s';
+    t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:12px 20px;border-radius:20px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;text-align:center;max-width:90vw';
     document.body.appendChild(t); }
   t.textContent=msg; t.style.opacity='1';
-  setTimeout(()=>t.style.opacity='0',3500);
+  clearTimeout(t._tid);
+  t._tid=setTimeout(()=>t.style.opacity='0', duration);
+}
+
+function getTarget() {
+  const isModal = document.getElementById('vendModal').classList.contains('open');
+  if(isModal) {
+    return {
+      el: document.querySelector('#vendModal .modal'),
+      name: (modalVendor||'Vendedor').replace(/[^a-zA-Z0-9]/g,'-').substring(0,25),
+      label: modalVendor||'Vendedor'
+    };
+  }
+  const names = {overview:'Visao-Geral', vendedores:'Vendedores', inadimplencia:'Inadimplencia'};
+  const labels = {overview:'Visão Geral', vendedores:'Vendedores', inadimplencia:'Inadimplência'};
+  const period = (document.getElementById('lbl-period')?.textContent||'').replace(/[^a-zA-Z0-9]/g,'-');
+  return {
+    el: document.getElementById('page-'+currentPage),
+    name: `${names[currentPage]||currentPage}-${period}`,
+    label: labels[currentPage]||currentPage
+  };
+}
+
+async function gerarECompartilhar(acao) {
+  document.getElementById('shareOverlay').classList.remove('open');
+  const {el, name, label} = getTarget();
+  const filename = `BI-Supraalimentos-${name}.pdf`;
+
+  // Gerar PDF
+  const result = await generatePDF(el, filename);
+  if(!result){ showToast('Erro ao gerar PDF. Tente novamente.'); return; }
+
+  const pdfFile = new File([result.blob], filename, {type:'application/pdf'});
+
+  // BAIXAR PDF
+  if(acao === 'download') {
+    result.pdf.save(filename);
+    showToast('✓ PDF salvo!');
+    return;
+  }
+
+  // COMPARTILHAR via Web Share API com arquivo (mobile e desktop modernos)
+  if(acao === 'compartilhar' || acao === 'whatsapp' || acao === 'email') {
+    // Tenta compartilhar o ARQUIVO via API nativa
+    if(navigator.canShare && navigator.canShare({files:[pdfFile]})) {
+      try {
+        await navigator.share({ files:[pdfFile], title:`BI Supraalimentos — ${label}` });
+        return;
+      } catch(e) {
+        if(e.name==='AbortError') return; // usuário cancelou
+        // API falhou, tenta fallback
+      }
+    }
+
+    // Fallback: baixa o PDF + instrução
+    result.pdf.save(filename);
+    if(acao==='whatsapp') {
+      showToast('PDF baixado! Abra o WhatsApp → clipe 📎 → selecione o arquivo.', 5000);
+      setTimeout(()=> window.open('https://web.whatsapp.com/','_blank'), 1200);
+    } else if(acao==='email') {
+      showToast('PDF baixado! Abra seu e-mail e anexe o arquivo.', 5000);
+      const sub = encodeURIComponent(`BI Supraalimentos — ${label}`);
+      const body = encodeURIComponent('Segue relatório BI Supraalimentos em anexo.');
+      setTimeout(()=> window.location.href=`mailto:?subject=${sub}&body=${body}`, 800);
+    } else {
+      showToast('PDF baixado! Compartilhe o arquivo manualmente.', 4000);
+    }
+    return;
+  }
+}
+
+async function exportPDF() {
+  await gerarECompartilhar('download');
+}
+
+async function exportPDFAndShare(method) {
+  await gerarECompartilhar(method==='pdf'||method==='download' ? 'download' : 'compartilhar');
 }
 
 function openShare() {
-  // Try native share with PDF directly on mobile
-  if(/Android|iPhone|iPad/i.test(navigator.userAgent) && navigator.share) {
-    exportPDFAndShare('native'); return;
-  }
   document.getElementById('shareOverlay').classList.add('open');
   document.getElementById('copyFeedback').style.display='none';
 }
@@ -972,19 +998,14 @@ function closeShare(e) {
 
 function copyLink() {
   navigator.clipboard.writeText(window.location.href).then(()=>{
-    const fb = document.getElementById('copyFeedback');
+    const fb=document.getElementById('copyFeedback');
     fb.style.display='block';
     setTimeout(()=>fb.style.display='none',2500);
   });
 }
 
-function printModal() { exportPDFAndShare('pdf'); }
-function shareModal() {
-  if(/Android|iPhone|iPad/i.test(navigator.userAgent) && navigator.share) {
-    exportPDFAndShare('native'); return;
-  }
-  document.getElementById('shareOverlay').classList.add('open');
-}
+function printModal() { gerarECompartilhar('download'); }
+function shareModal() { openShare(); }
 
 // ===== INIT =====
 window.addEventListener('load',()=>{
