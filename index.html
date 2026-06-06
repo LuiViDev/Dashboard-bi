@@ -8,6 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
   --blue:#1a6ef5;--blue-light:#e8f0fe;--green:#12b76a;--green-light:#d1fae5;
@@ -173,7 +175,14 @@ tbody td{padding:8px 12px;vertical-align:middle}
 .share-close:hover { color:var(--text1); }
 .copy-feedback { font-size:11px;color:var(--green);margin-top:6px;display:none;text-align:center; }
 
+/* PDF capture helper */
+.pdf-capture { background: #fff !important; color: #111 !important; }
+#pdfSpinner { position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:999;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#fff;font-size:15px;font-weight:600 }
+#pdfSpinner .spinner { width:44px;height:44px;border:4px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite }
+@keyframes spin { to { transform:rotate(360deg) } }
+
 /* Responsive */
+
 @media(max-width:900px){
   .kpi-grid{grid-template-columns:repeat(2,1fr)}
   .inad-grid{grid-template-columns:repeat(2,1fr)}
@@ -409,27 +418,28 @@ tbody td{padding:8px 12px;vertical-align:middle}
 
 </main>
 </div><!-- /layout -->
+<div id="pdfSpinner"><div class="spinner"></div><span id="pdfSpinnerMsg">Gerando PDF...</span></div>
 
 <!-- SHARE MODAL -->
 <div class="share-modal-overlay" id="shareOverlay" onclick="closeShare(event)">
   <div class="share-modal" onclick="event.stopPropagation()">
     <div class="share-title"><i class="ti ti-share" style="margin-right:6px"></i>Compartilhar dashboard</div>
     <div class="share-options">
-      <a class="share-btn" id="whatsappBtn" href="#" target="_blank" rel="noopener">
+      <div class="share-btn" onclick="exportPDFAndShare('whatsapp')">
         <div class="icon" style="background:#d1fae5;color:#25D366"><i class="ti ti-brand-whatsapp"></i></div>
-        Enviar pelo WhatsApp
-      </a>
-      <a class="share-btn" id="emailBtn" href="#" target="_blank">
+        <div><div style="font-weight:600">WhatsApp</div><div style="font-size:10px;color:var(--text2)">Gera PDF e abre WhatsApp</div></div>
+      </div>
+      <div class="share-btn" onclick="exportPDFAndShare('email')">
         <div class="icon" style="background:var(--blue-light);color:var(--blue)"><i class="ti ti-mail"></i></div>
-        Enviar por E-mail
-      </a>
+        <div><div style="font-weight:600">E-mail</div><div style="font-size:10px;color:var(--text2)">Gera PDF e abre e-mail</div></div>
+      </div>
+      <div class="share-btn" onclick="exportPDFAndShare('download')">
+        <div class="icon" style="background:var(--red-light);color:var(--red)"><i class="ti ti-file-type-pdf"></i></div>
+        <div><div style="font-weight:600">Baixar PDF</div><div style="font-size:10px;color:var(--text2)">Salva o PDF no dispositivo</div></div>
+      </div>
       <div class="share-btn" onclick="copyLink()">
         <div class="icon" style="background:var(--surface2);color:var(--text2)"><i class="ti ti-link"></i></div>
-        Copiar link
-      </div>
-      <div class="share-btn" onclick="exportPDF()">
-        <div class="icon" style="background:var(--red-light);color:var(--red)"><i class="ti ti-file-type-pdf"></i></div>
-        Exportar como PDF
+        <div><div style="font-weight:600">Copiar link</div><div style="font-size:10px;color:var(--text2)">Compartilha a página</div></div>
       </div>
     </div>
     <div class="copy-feedback" id="copyFeedback">✓ Link copiado!</div>
@@ -851,57 +861,108 @@ function renderInadTable() {
 }
 
 
-// ===== PDF & SHARE =====
-function exportPDF() {
-  const page = currentPage;
-  const period = document.getElementById('lbl-'+page) || document.getElementById('lbl-period');
-  const periodTxt = period ? period.textContent : '';
-  const now = new Date().toLocaleDateString('pt-BR');
-  // Update print header
-  const ph = document.getElementById('ph-page-'+page);
-  if(ph) ph.textContent = ph.textContent.split('•')[0] + '• Período: ' + periodTxt + ' • Gerado em ' + now;
-  document.title = 'BI Supraalimentos — ' + {'overview':'Visão Geral','vendedores':'Vendedores','inadimplencia':'Inadimplência'}[page] + ' — ' + periodTxt;
-  window.print();
-  document.title = 'Painel Comercial — BI Supraalimentos';
+// ===== PDF GENERATION & SHARE =====
+
+async function generatePDF(targetEl, filename) {
+  const spinner = document.getElementById('pdfSpinner');
+  const msg = document.getElementById('pdfSpinnerMsg');
+  spinner.style.display='flex';
+  msg.textContent='Gerando PDF...';
+  await new Promise(r=>setTimeout(r,100));
+  try {
+    const {jsPDF} = window.jspdf;
+    const canvas = await html2canvas(targetEl, {
+      scale: 2, useCORS: true, backgroundColor: '#ffffff',
+      logging: false, allowTaint: true,
+      ignoreElements: el => el.id==='pdfSpinner'||el.classList.contains('modal-overlay')&&el.id!=='vendModal'
+    });
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+    const pdf = new jsPDF({ orientation: canvas.width>canvas.height?'l':'p', unit:'px', format:[canvas.width/2, canvas.height/2] });
+    pdf.addImage(imgData,'JPEG',0,0,canvas.width/2,canvas.height/2);
+    spinner.style.display='none';
+    return { pdf, blob: pdf.output('blob'), filename };
+  } catch(e) {
+    spinner.style.display='none';
+    console.error(e);
+    return null;
+  }
 }
 
-function openShare() {
-  const url = window.location.href;
-  const page = {'overview':'Visão Geral','vendedores':'Clientes por Vendedor','inadimplencia':'Inadimplência'}[currentPage]||currentPage;
-  const period = document.getElementById('lbl-period')?.textContent||'';
-  const summary = buildShareSummary();
-  const text = `*BI Supraalimentos — ${page}*\n${period}\n\n${summary}\n\n${url}`;
+async function exportPDF() {
+  const page = document.getElementById('page-'+currentPage);
+  const pageName = {'overview':'Visao-Geral','vendedores':'Vendedores','inadimplencia':'Inadimplencia'}[currentPage]||currentPage;
+  const period = (document.getElementById('lbl-period')?.textContent||'').replace(/\s+/g,'-');
+  const filename = `BI-Supraalimentos-${pageName}-${period}.pdf`;
+  const result = await generatePDF(page, filename);
+  if(result) result.pdf.save(result.filename);
+}
 
-  // Try native share (mobile)
-  if(navigator.share) {
-    navigator.share({ title: 'BI Supraalimentos', text: text, url: url }).catch(()=>{});
+async function exportPDFAndShare(method) {
+  document.getElementById('shareOverlay').classList.remove('open');
+  const isModal = document.getElementById('vendModal').classList.contains('open');
+  let targetEl, pageName, period;
+  if(isModal) {
+    targetEl = document.querySelector('#vendModal .modal');
+    pageName = (modalVendor||'Vendedor').replace(/\s+/g,'-').substring(0,20);
+    period = 'Clientes';
+  } else {
+    targetEl = document.getElementById('page-'+currentPage);
+    pageName = {'overview':'Visao-Geral','vendedores':'Vendedores','inadimplencia':'Inadimplencia'}[currentPage]||currentPage;
+    period = (document.getElementById('lbl-period')?.textContent||'').replace(/\s+/g,'-');
+  }
+  const filename = `BI-Supraalimentos-${pageName}-${period}.pdf`;
+  const result = await generatePDF(targetEl, filename);
+  if(!result) return;
+
+  if(method==='download' || method==='pdf') {
+    result.pdf.save(result.filename);
     return;
   }
 
-  // Desktop fallback: open modal
-  const waText = encodeURIComponent(text);
-  const emailSub = encodeURIComponent(`BI Supraalimentos — ${page} — ${period}`);
-  const emailBody = encodeURIComponent(text.replace(/\*/g,''));
-  document.getElementById('whatsappBtn').href = `https://wa.me/?text=${waText}`;
-  document.getElementById('emailBtn').href = `mailto:?subject=${emailSub}&body=${emailBody}`;
-  document.getElementById('shareOverlay').classList.add('open');
-  document.getElementById('copyFeedback').style.display='none';
+  const pdfFile = new File([result.blob], result.filename, {type:'application/pdf'});
+
+  if(method==='native' || (method==='whatsapp'&&/Android|iPhone|iPad/i.test(navigator.userAgent))) {
+    if(navigator.canShare&&navigator.canShare({files:[pdfFile]})) {
+      try { await navigator.share({files:[pdfFile], title:'BI Supraalimentos', text:'Relatório BI Supraalimentos'}); return; }
+      catch(e){ if(e.name!=='AbortError') result.pdf.save(result.filename); return; }
+    }
+  }
+
+  if(method==='whatsapp') {
+    // Desktop: download + open WhatsApp
+    result.pdf.save(result.filename);
+    setTimeout(()=>{ window.open('https://web.whatsapp.com/','_blank'); }, 800);
+    showToast('PDF baixado! Abra o WhatsApp e anexe o arquivo.');
+    return;
+  }
+
+  if(method==='email') {
+    result.pdf.save(result.filename);
+    const sub = encodeURIComponent(`BI Supraalimentos — ${pageName}`);
+    const body = encodeURIComponent('Segue em anexo o relatório BI Supraalimentos.\n\n(Anexe o PDF baixado a este e-mail)');
+    window.location.href = `mailto:?subject=${sub}&body=${body}`;
+    return;
+  }
+
+  result.pdf.save(result.filename);
 }
 
-function buildShareSummary() {
-  const filtered = filterInad(INAD);
-  if(currentPage==='inadimplencia') {
-    const total = filtered.reduce((s,r)=>s+r.valor,0);
-    const clis = new Set(filtered.map(r=>r.codcli)).size;
-    const d90 = filtered.filter(r=>r.dias>90).reduce((s,r)=>s+r.valor,0);
-    return `Total: ${fmt(total)}\nClientes: ${clis}\n+90 dias: ${fmt(d90)}`;
+function showToast(msg) {
+  let t = document.getElementById('toast');
+  if(!t){ t=document.createElement('div'); t.id='toast';
+    t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s';
+    document.body.appendChild(t); }
+  t.textContent=msg; t.style.opacity='1';
+  setTimeout(()=>t.style.opacity='0',3500);
+}
+
+function openShare() {
+  // Try native share with PDF directly on mobile
+  if(/Android|iPhone|iPad/i.test(navigator.userAgent) && navigator.share) {
+    exportPDFAndShare('native'); return;
   }
-  if(currentPage==='vendedores') {
-    const ativos = CLIENTES.filter(c=>c.s==='ativo').length;
-    return `Total clientes: 5.243\nAtivos: ${ativos}\nVendedores: 53`;
-  }
-  const total = filtered.reduce((s,r)=>s+r.valor,0);
-  return `Inadimplência: ${fmt(total)}\nClientes: ${new Set(filtered.map(r=>r.codcli)).size}`;
+  document.getElementById('shareOverlay').classList.add('open');
+  document.getElementById('copyFeedback').style.display='none';
 }
 
 function closeShare(e) {
@@ -915,6 +976,14 @@ function copyLink() {
     fb.style.display='block';
     setTimeout(()=>fb.style.display='none',2500);
   });
+}
+
+function printModal() { exportPDFAndShare('pdf'); }
+function shareModal() {
+  if(/Android|iPhone|iPad/i.test(navigator.userAgent) && navigator.share) {
+    exportPDFAndShare('native'); return;
+  }
+  document.getElementById('shareOverlay').classList.add('open');
 }
 
 // ===== INIT =====
